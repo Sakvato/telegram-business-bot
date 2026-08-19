@@ -53,6 +53,14 @@ MESSAGES = {
         "status_cancelled": "Отменён",
         "status_changed": "Статус заказа #{order_id} изменён на: {status}",
         "notify_status": "Статус вашего заказа #{order_id} изменён на: {status}",
+        "my_partner": "Партнёрская программа",
+        "partner_link": "<b>Ваша партнёрская ссылка:</b>\n\n<code>{link}</code>\n\nПоделитесь ей с друзьями и получайте {percent}% с каждой покупки!",
+        "partner_stats": "<b>Ваша статистика:</b>\n\nПриглашено: {referrals}\nЗаказов: {orders}\nЗаработано: {earned}",
+        "partner_no_referrals": "Пока нет приглашённых. Поделитесь ссылкой!",
+        "partner_referral_joined": "Новый реферал: @{username}",
+        "admin_partners": "Партнёры",
+        "admin_partners_list": "<b>Статистика партнёров:</b>\n\n",
+        "admin_no_partners": "Нет активных партнёров.",
     },
     "en": {
         "welcome": "Welcome!\n\nI help you manage your business.\nUse the menu below:",
@@ -93,6 +101,14 @@ MESSAGES = {
         "status_cancelled": "Cancelled",
         "status_changed": "Order #{order_id} status changed to: {status}",
         "notify_status": "Your order #{order_id} status changed to: {status}",
+        "my_partner": "Partner Program",
+        "partner_link": "<b>Your partner link:</b>\n\n<code>{link}</code>\n\nShare it with friends and earn {percent}% from each purchase!",
+        "partner_stats": "<b>Your stats:</b>\n\nInvited: {referrals}\nOrders: {orders}\nEarned: {earned}",
+        "partner_no_referrals": "No referrals yet. Share your link!",
+        "partner_referral_joined": "New referral: @{username}",
+        "admin_partners": "Partners",
+        "admin_partners_list": "<b>Partner stats:</b>\n\n",
+        "admin_no_partners": "No active partners.",
     }
 }
 
@@ -210,6 +226,7 @@ def main_menu_kb(lang):
             [{"text": msg(lang, "new_order"), "callback_data": "new_order"}],
             [{"text": msg(lang, "my_orders"), "callback_data": "my_orders"}],
             [{"text": msg(lang, "contact"), "callback_data": "contact"}],
+            [{"text": msg(lang, "my_partner"), "callback_data": "my_partner"}],
             [{"text": msg(lang, "lang_button"), "callback_data": "change_lang"}],
         ]
     }
@@ -257,6 +274,7 @@ def owner_menu_kb(lang):
             [{"text": msg(lang, "statistics"), "callback_data": "stats"}],
             [{"text": msg(lang, "pending_orders"), "callback_data": "pending_orders"}],
             [{"text": msg(lang, "all_orders"), "callback_data": "all_orders"}],
+            [{"text": msg(lang, "admin_partners"), "callback_data": "admin_partners"}],
             [{"text": msg(lang, "settings"), "callback_data": "settings"}],
             [{"text": msg(lang, "back_to_menu"), "callback_data": "back_to_menu"}],
         ]
@@ -287,7 +305,21 @@ def handle_message(bot, api, config, db, message):
         return
 
     if text == "/start":
+        parts = text.split()
+        referred_by = None
+        if len(parts) > 1 and parts[1].startswith("ref"):
+            try:
+                referred_by = int(parts[1][3:])
+            except ValueError:
+                pass
+        db.add_user_sync(user_id, message["from"].get("username"), message["from"].get("full_name"), referred_by)
+        if referred_by and referred_by != user_id:
+            try:
+                api.send_message(referred_by, msg(get_lang(referred_by, user_langs), "partner_referral_joined", username=message["from"].get("username", "unknown")))
+            except Exception:
+                pass
         api.send_message(chat_id, msg(lang, "welcome"), reply_markup=main_menu_kb(lang))
+        return
 
     elif text == "/admin" and user_id == config.get("owner_id"):
         api.send_message(chat_id, msg(lang, "admin_panel"), reply_markup=owner_menu_kb(lang))
@@ -387,6 +419,22 @@ def handle_callback(bot, api, config, db, cb):
         info = config.get("contact_info", "@support")
         api.edit_message_text(chat_id, message_id, msg(lang, "contact_info", info=info), reply_markup=back_kb(lang))
 
+    elif data == "my_partner":
+        bot_info = api.get_me()
+        bot_username = bot_info.get("result", {}).get("username", "bot")
+        partner_link = f"https://t.me/{bot_username}?start=ref{user_id}"
+        referrals = db.get_partner_referrals_sync(user_id)
+        earnings = db.get_partner_earnings_sync(user_id)
+        ref_count = earnings[0] if earnings else 0
+        order_count = earnings[1] if earnings else 0
+        percent = config.get("partner_percent", 10)
+        earned = order_count * 100 * percent / 100
+        if referrals:
+            text_msg = msg(lang, "partner_link", link=partner_link, percent=percent) + "\n\n" + msg(lang, "partner_stats", referrals=ref_count, orders=order_count, earned=f"{earned} руб.")
+        else:
+            text_msg = msg(lang, "partner_link", link=partner_link, percent=percent) + "\n\n" + msg(lang, "partner_no_referrals")
+        api.edit_message_text(chat_id, message_id, text_msg, reply_markup=back_kb(lang))
+
     elif data == "stats":
         if user_id != config.get("owner_id"):
             api.answer_callback_query(cb["id"], msg(lang, "access_denied"), show_alert=True)
@@ -475,6 +523,20 @@ def handle_callback(bot, api, config, db, cb):
             api.answer_callback_query(cb["id"], msg(lang, "access_denied"), show_alert=True)
             return
         api.edit_message_text(chat_id, message_id, msg(lang, "settings_text"), reply_markup=back_kb(lang))
+
+    elif data == "admin_partners":
+        if user_id != config.get("owner_id"):
+            api.answer_callback_query(cb["id"], msg(lang, "access_denied"), show_alert=True)
+            return
+        partners = db.get_all_partners_stats_sync()
+        if not partners:
+            api.edit_message_text(chat_id, message_id, msg(lang, "admin_no_partners"), reply_markup=owner_menu_kb(lang))
+        else:
+            text_msg = msg(lang, "admin_partners_list")
+            for p in partners[:10]:
+                pid, uname, referrals, orders = p
+                text_msg += f"@{uname or pid} | Приглашено: {referrals} | Заказов: {orders}\n"
+            api.edit_message_text(chat_id, message_id, text_msg, reply_markup=owner_menu_kb(lang))
 
 
 def main():

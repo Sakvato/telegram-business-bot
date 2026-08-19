@@ -1,10 +1,11 @@
 {
   "bot_token": "8901833122:AAH5JhyCwFa4v9Ai6Xp3xqYepMO6Y4m3aKw",
-  "bot_username": "your_bot_username",
-  "bot_name": "My Business Bot",
+  "bot_username": "Bisni_bot",
+  "bot_name": "Business Bot",
   "owner_id": 1513459317,
   "welcome_message": "Hello! I help you manage your business.\n\nUse the menu below:",
   "order_success_message": "Your order has been received! We will contact you soon.",
   "currency": "RUB",
-  "contact_info": "@your_contact"
+  "contact_info": "@Sakvato",
+  "partner_percent": 10
 }

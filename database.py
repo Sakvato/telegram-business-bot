@@ -15,7 +15,9 @@ class Database:
                 username TEXT,
                 full_name TEXT,
                 phone TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                referred_by INTEGER,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (referred_by) REFERENCES users(user_id)
             )
         """)
         self.conn.execute("""
@@ -30,22 +32,71 @@ class Database:
                 FOREIGN KEY (user_id) REFERENCES users(user_id)
             )
         """)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS partner_payouts (
+                payout_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                partner_id INTEGER,
+                amount REAL,
+                status TEXT DEFAULT 'pending',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (partner_id) REFERENCES users(user_id)
+            )
+        """)
         self.conn.commit()
 
     def close(self):
         if self.conn:
             self.conn.close()
 
-    def add_user_sync(self, user_id, username=None, full_name=None):
+    def add_user_sync(self, user_id, username=None, full_name=None, referred_by=None):
         self.conn.execute(
-            "INSERT OR IGNORE INTO users (user_id, username, full_name) VALUES (?, ?, ?)",
-            (user_id, username, full_name)
+            "INSERT OR IGNORE INTO users (user_id, username, full_name, referred_by) VALUES (?, ?, ?, ?)",
+            (user_id, username, full_name, referred_by)
+        )
+        self.conn.commit()
+
+    def set_user_referred_sync(self, user_id, referred_by):
+        self.conn.execute(
+            "UPDATE users SET referred_by = ? WHERE user_id = ? AND referred_by IS NULL",
+            (referred_by, user_id)
         )
         self.conn.commit()
 
     def get_user_sync(self, user_id):
         cur = self.conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
         return cur.fetchone()
+
+    def get_partner_referrals_sync(self, partner_id):
+        cur = self.conn.execute(
+            "SELECT user_id, username, full_name, created_at FROM users WHERE referred_by = ? ORDER BY created_at DESC",
+            (partner_id,)
+        )
+        return cur.fetchall()
+
+    def get_partner_earnings_sync(self, partner_id):
+        cur = self.conn.execute(
+            """SELECT COUNT(*) as referral_count, 
+                      COALESCE(SUM(o.quantity), 0) as total_items
+               FROM users u 
+               LEFT JOIN orders o ON u.user_id = o.user_id 
+               WHERE u.referred_by = ? AND o.status = 'completed'""",
+            (partner_id,)
+        )
+        return cur.fetchone()
+
+    def get_all_partners_stats_sync(self):
+        cur = self.conn.execute(
+            """SELECT u.user_id, u.username, 
+                      COUNT(DISTINCT u2.user_id) as referrals,
+                      COUNT(DISTINCT o.order_id) as orders
+               FROM users u
+               LEFT JOIN users u2 ON u2.referred_by = u.user_id
+               LEFT JOIN orders o ON u2.user_id = o.user_id AND o.status = 'completed'
+               WHERE EXISTS (SELECT 1 FROM users WHERE referred_by = u.user_id)
+               GROUP BY u.user_id
+               ORDER BY referrals DESC"""
+        )
+        return cur.fetchall()
 
     def add_order_sync(self, user_id, product, description, quantity=1):
         cur = self.conn.execute(

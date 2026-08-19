@@ -13,10 +13,96 @@ CONFIG_PATH = Path(__file__).parent / "config.json"
 DB_PATH = Path(__file__).parent / "bot_data.db"
 PROXY_URL = "https://frog-telegram-proxy.ilaturakov.workers.dev"
 
+MESSAGES = {
+    "ru": {
+        "welcome": "Добро пожаловать!\n\nЯ помогу вам управлять бизнесом.\nИспользуйте меню ниже:",
+        "lang_selected": "Язык изменён на русский",
+        "new_order": "Новый заказ",
+        "my_orders": "Мои заказы",
+        "contact": "Контакт",
+        "back_to_menu": "Назад в меню",
+        "back_to_admin": "Назад в админку",
+        "select_product": "Выберите товар:",
+        "describe_order": "Опишите ваш заказ:",
+        "quantity": "Количество:",
+        "confirm": "Подтвердить",
+        "cancel": "Отмена",
+        "order_summary": "<b>Заказ:</b>\nТовар: {product}\nОписание: {desc}\nКоличество: {qty}\n\nПодтвердить?",
+        "order_confirmed": "Заказ #{order_id} подтверждён!\n\n{success}",
+        "order_cancelled": "Заказ отменён.",
+        "no_orders": "Заказов пока нет.",
+        "your_orders": "<b>Ваши заказы:</b>\n\n",
+        "contact_info": "Контакт: {info}",
+        "admin_panel": "<b>Панель администратора:</b>",
+        "statistics": "Статистика",
+        "all_orders": "Все заказы",
+        "pending_orders": "Ожидающие заказы",
+        "settings": "Настройки",
+        "access_denied": "Доступ запрещён",
+        "no_pending": "Нет ожидающих заказов.",
+        "no_orders_list": "Нет заказов.",
+        "pending_list": "<b>Ожидающие заказы:</b>\n\nНажмите на заказ для действий.",
+        "all_orders_list": "<b>Все заказы:</b>\n\nНажмите на заказ для действий.",
+        "settings_text": "<b>Настройки бота:</b>\n\nПриветственное сообщение и другое.",
+        "stats_text": "<b>Статистика:</b>\n\nПользователи: {users}\nЗаказы: {orders}\nОжидают: {pending}\nВыполнены: {completed}",
+        "lang_button": "Язык",
+        "select_language": "Выберите язык:",
+        "order_detail": "<b>Заказ #{order_id}</b>\n\nКлиент: @{username}\nТовар: {product}\nОписание: {desc}\nКоличество: {qty}\nСтатус: {status}\nСоздан: {created}",
+        "status_processing": "В обработке",
+        "status_completed": "Выполнен",
+        "status_cancelled": "Отменён",
+        "status_changed": "Статус заказа #{order_id} изменён на: {status}",
+        "notify_status": "Статус вашего заказа #{order_id} изменён на: {status}",
+    },
+    "en": {
+        "welcome": "Welcome!\n\nI help you manage your business.\nUse the menu below:",
+        "lang_selected": "Language changed to English",
+        "new_order": "New Order",
+        "my_orders": "My Orders",
+        "contact": "Contact",
+        "back_to_menu": "Back to Menu",
+        "back_to_admin": "Back to Admin",
+        "select_product": "Select a product:",
+        "describe_order": "Describe your order:",
+        "quantity": "Quantity:",
+        "confirm": "Confirm",
+        "cancel": "Cancel",
+        "order_summary": "<b>Order:</b>\nProduct: {product}\nDescription: {desc}\nQuantity: {qty}\n\nConfirm?",
+        "order_confirmed": "Order #{order_id} confirmed!\n\n{success}",
+        "order_cancelled": "Order cancelled.",
+        "no_orders": "No orders yet.",
+        "your_orders": "<b>Your orders:</b>\n\n",
+        "contact_info": "Contact: {info}",
+        "admin_panel": "<b>Admin Panel:</b>",
+        "statistics": "Statistics",
+        "all_orders": "All Orders",
+        "pending_orders": "Pending Orders",
+        "settings": "Settings",
+        "access_denied": "Access denied",
+        "no_pending": "No pending orders.",
+        "no_orders_list": "No orders.",
+        "pending_list": "<b>Pending orders:</b>\n\nClick an order for actions.",
+        "all_orders_list": "<b>All orders:</b>\n\nClick an order for actions.",
+        "settings_text": "<b>Bot Settings:</b>\n\nWelcome message and more.",
+        "stats_text": "<b>Statistics:</b>\n\nUsers: {users}\nOrders: {orders}\nPending: {pending}\nCompleted: {completed}",
+        "lang_button": "Language",
+        "select_language": "Select language:",
+        "order_detail": "<b>Order #{order_id}</b>\n\nClient: @{username}\nProduct: {product}\nDescription: {desc}\nQuantity: {qty}\nStatus: {status}\nCreated: {created}",
+        "status_processing": "Processing",
+        "status_completed": "Completed",
+        "status_cancelled": "Cancelled",
+        "status_changed": "Order #{order_id} status changed to: {status}",
+        "notify_status": "Your order #{order_id} status changed to: {status}",
+    }
+}
+
+PRODUCTS_RU = ["Товар 1", "Товар 2", "Товар 3", "Услуга 1", "Услуга 2"]
+PRODUCTS_EN = ["Product 1", "Product 2", "Product 3", "Service 1", "Service 2"]
+STATUS_MAP_RU = {"pending": "Ожидает", "processing": "В обработке", "completed": "Выполнен", "cancelled": "Отменён"}
+STATUS_MAP_EN = {"pending": "Pending", "processing": "Processing", "completed": "Completed", "cancelled": "Cancelled"}
+
 
 class BotAPI:
-    """Telegram Bot API via Cloudflare proxy"""
-
     def __init__(self, bot_token, proxy_url=PROXY_URL):
         self.bot_token = bot_token
         self.proxy_url = proxy_url.rstrip("/")
@@ -72,8 +158,8 @@ class BotAPI:
             params["reply_markup"] = json.dumps(reply_markup)
         return self._post("editMessageText", params)
 
-    def answer_callback_query(self, callback_query_id, text=None):
-        params = {"callback_query_id": callback_query_id}
+    def answer_callback_query(self, callback_query_id, text=None, show_alert=False):
+        params = {"callback_query_id": callback_query_id, "show_alert": show_alert}
         if text:
             params["text"] = text
         return self._post("answerCallbackQuery", params)
@@ -84,75 +170,127 @@ def load_config():
         return json.load(f)
 
 
-def main_menu_kb():
-    return {
-        "inline_keyboard": [
-            [{"text": "New Order", "callback_data": "new_order"}],
-            [{"text": "My Orders", "callback_data": "my_orders"}],
-            [{"text": "Contact", "callback_data": "contact"}],
-        ]
-    }
+def get_lang(user_id, user_langs):
+    return user_langs.get(user_id, "ru")
 
 
-def confirm_kb():
+def get_products(lang):
+    return PRODUCTS_RU if lang == "ru" else PRODUCTS_EN
+
+
+def get_status_map(lang):
+    return STATUS_MAP_RU if lang == "ru" else STATUS_MAP_EN
+
+
+def status_name(status, lang):
+    return get_status_map(lang).get(status, status)
+
+
+def msg(lang, key, **kwargs):
+    text = MESSAGES[lang].get(key, key)
+    if kwargs:
+        text = text.format(**kwargs)
+    return text
+
+
+def lang_select_kb():
     return {
         "inline_keyboard": [
             [
-                {"text": "Confirm", "callback_data": "confirm_yes"},
-                {"text": "Cancel", "callback_data": "confirm_no"},
+                {"text": "Русский", "callback_data": "lang_ru"},
+                {"text": "English", "callback_data": "lang_en"},
             ]
         ]
     }
 
 
-def back_kb():
+def main_menu_kb(lang):
     return {
         "inline_keyboard": [
-            [{"text": "Back to Menu", "callback_data": "back_to_menu"}],
+            [{"text": msg(lang, "new_order"), "callback_data": "new_order"}],
+            [{"text": msg(lang, "my_orders"), "callback_data": "my_orders"}],
+            [{"text": msg(lang, "contact"), "callback_data": "contact"}],
+            [{"text": msg(lang, "lang_button"), "callback_data": "change_lang"}],
         ]
     }
 
 
-def owner_menu_kb():
+def confirm_kb(lang):
     return {
         "inline_keyboard": [
-            [{"text": "Statistics", "callback_data": "stats"}],
-            [{"text": "Pending Orders", "callback_data": "pending_orders"}],
-            [{"text": "Settings", "callback_data": "settings"}],
-            [{"text": "Back to Menu", "callback_data": "back_to_menu"}],
+            [
+                {"text": msg(lang, "confirm"), "callback_data": "confirm_yes"},
+                {"text": msg(lang, "cancel"), "callback_data": "confirm_no"},
+            ]
         ]
     }
 
 
-PRODUCTS = ["Product 1", "Product 2", "Product 3", "Service 1", "Service 2"]
-STATUS_MAP = {"pending": "Pending", "processing": "Processing", "completed": "Completed", "cancelled": "Cancelled"}
+def back_kb(lang):
+    return {
+        "inline_keyboard": [
+            [{"text": msg(lang, "back_to_menu"), "callback_data": "back_to_menu"}],
+        ]
+    }
+
+
+def order_action_kb(order_id, lang):
+    return {
+        "inline_keyboard": [
+            [
+                {"text": msg(lang, "status_processing"), "callback_data": f"setstatus_{order_id}_processing"},
+                {"text": msg(lang, "status_completed"), "callback_data": f"setstatus_{order_id}_completed"},
+            ],
+            [
+                {"text": msg(lang, "status_cancelled"), "callback_data": f"setstatus_{order_id}_cancelled"},
+            ],
+            [
+                {"text": msg(lang, "back_to_admin"), "callback_data": "back_to_admin"},
+            ],
+        ]
+    }
+
+
+def owner_menu_kb(lang):
+    return {
+        "inline_keyboard": [
+            [{"text": msg(lang, "statistics"), "callback_data": "stats"}],
+            [{"text": msg(lang, "pending_orders"), "callback_data": "pending_orders"}],
+            [{"text": msg(lang, "all_orders"), "callback_data": "all_orders"}],
+            [{"text": msg(lang, "settings"), "callback_data": "settings"}],
+            [{"text": msg(lang, "back_to_menu"), "callback_data": "back_to_menu"}],
+        ]
+    }
+
 
 user_states = {}
+user_langs = {}
 
 
-def handle_message(bot, api, config, db, msg):
-    user_id = msg.get("from", {}).get("id")
-    text = msg.get("text", "")
-    chat_id = msg.get("chat", {}).get("id")
+def handle_message(bot, api, config, db, message):
+    user_id = message.get("from", {}).get("id")
+    text = message.get("text", "")
+    chat_id = message.get("chat", {}).get("id")
 
     if not user_id or not chat_id:
         return
 
-    db.add_user_sync(user_id, msg["from"].get("username"), msg["from"].get("full_name"))
+    db.add_user_sync(user_id, message["from"].get("username"), message["from"].get("full_name"))
 
     state = user_states.get(user_id)
+    lang = get_lang(user_id, user_langs)
 
     if state and state.get("step") == "waiting_description":
         user_states[user_id] = {"step": "waiting_quantity", "product": state["product"], "description": text}
         kb = {"inline_keyboard": [[{"text": str(i), "callback_data": f"qty_{i}"} for i in range(1, 6)]]}
-        api.send_message(chat_id, f"Product: {state['product']}\nDescription: {text}\n\nQuantity:", reply_markup=kb)
+        api.send_message(chat_id, msg(lang, "quantity"), reply_markup=kb)
         return
 
     if text == "/start":
-        api.send_message(chat_id, config.get("welcome_message", "Welcome!"), reply_markup=main_menu_kb())
+        api.send_message(chat_id, msg(lang, "welcome"), reply_markup=main_menu_kb(lang))
 
     elif text == "/admin" and user_id == config.get("owner_id"):
-        api.send_message(chat_id, "<b>Admin Panel:</b>", reply_markup=owner_menu_kb())
+        api.send_message(chat_id, msg(lang, "admin_panel"), reply_markup=owner_menu_kb(lang))
 
 
 def handle_callback(bot, api, config, db, cb):
@@ -166,32 +304,56 @@ def handle_callback(bot, api, config, db, cb):
 
     api.answer_callback_query(cb["id"])
 
+    lang = get_lang(user_id, user_langs)
+    products = get_products(lang)
+
+    if data == "lang_ru":
+        user_langs[user_id] = "ru"
+        api.edit_message_text(chat_id, message_id, msg("ru", "lang_selected"), reply_markup=main_menu_kb("ru"))
+        return
+
+    elif data == "lang_en":
+        user_langs[user_id] = "en"
+        api.edit_message_text(chat_id, message_id, msg("en", "lang_selected"), reply_markup=main_menu_kb("en"))
+        return
+
+    elif data == "change_lang":
+        api.edit_message_text(chat_id, message_id, msg(lang, "select_language"), reply_markup=lang_select_kb())
+        return
+
     if data == "back_to_menu":
         user_states.pop(user_id, None)
-        api.edit_message_text(chat_id, message_id, config.get("welcome_message", "Welcome!"), reply_markup=main_menu_kb())
+        api.edit_message_text(chat_id, message_id, msg(lang, "welcome"), reply_markup=main_menu_kb(lang))
+
+    elif data == "back_to_admin":
+        if user_id == config.get("owner_id"):
+            api.edit_message_text(chat_id, message_id, msg(lang, "admin_panel"), reply_markup=owner_menu_kb(lang))
+        else:
+            api.edit_message_text(chat_id, message_id, msg(lang, "welcome"), reply_markup=main_menu_kb(lang))
+        return
 
     elif data == "new_order":
-        kb = {"inline_keyboard": [[{"text": p, "callback_data": f"product_{i}"}] for i, p in enumerate(PRODUCTS)]}
-        api.edit_message_text(chat_id, message_id, "Select a product:", reply_markup=kb)
+        kb = {"inline_keyboard": [[{"text": p, "callback_data": f"product_{i}"}] for i, p in enumerate(products)]}
+        api.edit_message_text(chat_id, message_id, msg(lang, "select_product"), reply_markup=kb)
 
     elif data.startswith("product_"):
         index = int(data.split("_")[1])
-        product = PRODUCTS[index]
+        product = products[index]
         user_states[user_id] = {"step": "waiting_description", "product": product}
-        api.edit_message_text(chat_id, message_id, f"Product: {product}\n\nDescribe your order:")
+        api.edit_message_text(chat_id, message_id, f"{product}\n\n{msg(lang, 'describe_order')}")
 
     elif data.startswith("qty_"):
         quantity = int(data.split("_")[1])
         state = user_states.get(user_id, {})
-        product = state.get("product", "Unknown")
-        description = state.get("description", "No description")
+        product = state.get("product", "?")
+        description = state.get("description", "")
         user_states[user_id] = {"step": "confirm", "product": product, "description": description, "quantity": quantity}
-        text = f"<b>Order:</b>\nProduct: {product}\nDescription: {description}\nQuantity: {quantity}\n\nConfirm?"
-        api.edit_message_text(chat_id, message_id, text, reply_markup=confirm_kb())
+        text_msg = msg(lang, "order_summary", product=product, desc=description, qty=quantity)
+        api.edit_message_text(chat_id, message_id, text_msg, reply_markup=confirm_kb(lang))
 
     elif data == "confirm_yes":
         state = user_states.pop(user_id, {})
-        product = state.get("product", "Unknown")
+        product = state.get("product", "?")
         description = state.get("description", "")
         quantity = state.get("quantity", 1)
         order_id = db.add_order_sync(user_id, product, description, quantity)
@@ -202,55 +364,117 @@ def handle_callback(bot, api, config, db, cb):
             owner_text = f"<b>New order #{order_id}</b>\n\nClient: @{username}\nProduct: {product}\nDescription: {description}\nQty: {quantity}"
             api.send_message(owner_id, owner_text)
 
-        api.edit_message_text(chat_id, message_id, f"Order #{order_id} confirmed!\n\n{config.get('order_success_message', 'Thank you!')}", reply_markup=main_menu_kb())
+        success_msg = config.get("order_success_message", "Thank you!")
+        api.edit_message_text(chat_id, message_id, msg(lang, "order_confirmed", order_id=order_id, success=success_msg), reply_markup=main_menu_kb(lang))
 
     elif data == "confirm_no":
         user_states.pop(user_id, None)
-        api.edit_message_text(chat_id, message_id, "Order cancelled.", reply_markup=main_menu_kb())
+        api.edit_message_text(chat_id, message_id, msg(lang, "order_cancelled"), reply_markup=main_menu_kb(lang))
 
     elif data == "my_orders":
         orders = db.get_user_orders_sync(user_id)
         if not orders:
-            api.edit_message_text(chat_id, message_id, "No orders yet.", reply_markup=back_kb())
+            api.edit_message_text(chat_id, message_id, msg(lang, "no_orders"), reply_markup=back_kb(lang))
         else:
-            text = "<b>Your orders:</b>\n\n"
+            status_map = get_status_map(lang)
+            text_msg = msg(lang, "your_orders")
             for o in orders[:10]:
                 oid, uid, prod, desc, qty, status, created = o
-                text += f"#{oid} | {prod} | {STATUS_MAP.get(status, status)}\n"
-            api.edit_message_text(chat_id, message_id, text, reply_markup=back_kb())
+                text_msg += f"#{oid} | {prod} | {status_map.get(status, status)}\n"
+            api.edit_message_text(chat_id, message_id, text_msg, reply_markup=back_kb(lang))
 
     elif data == "contact":
-        api.edit_message_text(chat_id, message_id, f"Contact: {config.get('contact_info', '@support')}", reply_markup=back_kb())
+        info = config.get("contact_info", "@support")
+        api.edit_message_text(chat_id, message_id, msg(lang, "contact_info", info=info), reply_markup=back_kb(lang))
 
     elif data == "stats":
         if user_id != config.get("owner_id"):
-            api.answer_callback_query(cb["id"], "Access denied", show_alert=True)
+            api.answer_callback_query(cb["id"], msg(lang, "access_denied"), show_alert=True)
             return
         stats = db.get_stats_sync()
-        text = f"<b>Statistics:</b>\n\nUsers: {stats['total_users']}\nOrders: {stats['total_orders']}\nPending: {stats['pending_orders']}\nCompleted: {stats['completed_orders']}"
-        api.edit_message_text(chat_id, message_id, text, reply_markup=owner_menu_kb())
+        text_msg = msg(lang, "stats_text", users=stats['total_users'], orders=stats['total_orders'], pending=stats['pending_orders'], completed=stats['completed_orders'])
+        api.edit_message_text(chat_id, message_id, text_msg, reply_markup=owner_menu_kb(lang))
 
     elif data == "pending_orders":
         if user_id != config.get("owner_id"):
-            api.answer_callback_query(cb["id"], "Access denied", show_alert=True)
+            api.answer_callback_query(cb["id"], msg(lang, "access_denied"), show_alert=True)
             return
         orders = db.get_all_orders_sync("pending")
         if not orders:
-            api.edit_message_text(chat_id, message_id, "No pending orders.", reply_markup=owner_menu_kb())
+            api.edit_message_text(chat_id, message_id, msg(lang, "no_pending"), reply_markup=owner_menu_kb(lang))
         else:
-            text = "<b>Pending orders:</b>\n\n"
+            kb_buttons = []
             for o in orders[:10]:
                 oid, uid, prod, desc, qty, status, created = o
                 user = db.get_user_sync(uid)
                 uname = user[1] if user and user[1] else f"ID:{uid}"
-                text += f"#{oid} | {prod} | @{uname}\n"
-            api.edit_message_text(chat_id, message_id, text, reply_markup=owner_menu_kb())
+                kb_buttons.append([{"text": f"#{oid} | {prod} | @{uname}", "callback_data": f"vieworder_{oid}"}])
+            kb_buttons.append([{"text": msg(lang, "back_to_admin"), "callback_data": "back_to_admin"}])
+            api.edit_message_text(chat_id, message_id, msg(lang, "pending_list"), reply_markup={"inline_keyboard": kb_buttons})
+
+    elif data == "all_orders":
+        if user_id != config.get("owner_id"):
+            api.answer_callback_query(cb["id"], msg(lang, "access_denied"), show_alert=True)
+            return
+        orders = db.get_all_orders_sync()
+        if not orders:
+            api.edit_message_text(chat_id, message_id, msg(lang, "no_orders_list"), reply_markup=owner_menu_kb(lang))
+        else:
+            status_map = get_status_map(lang)
+            kb_buttons = []
+            for o in orders[:10]:
+                oid, uid, prod, desc, qty, status, created = o
+                user = db.get_user_sync(uid)
+                uname = user[1] if user and user[1] else f"ID:{uid}"
+                kb_buttons.append([{"text": f"#{oid} | {prod} | {status_map.get(status, status)} | @{uname}", "callback_data": f"vieworder_{oid}"}])
+            kb_buttons.append([{"text": msg(lang, "back_to_admin"), "callback_data": "back_to_admin"}])
+            api.edit_message_text(chat_id, message_id, msg(lang, "all_orders_list"), reply_markup={"inline_keyboard": kb_buttons})
+
+    elif data.startswith("vieworder_"):
+        if user_id != config.get("owner_id"):
+            api.answer_callback_query(cb["id"], msg(lang, "access_denied"), show_alert=True)
+            return
+        order_id = int(data.split("_")[1])
+        order = db.get_order_sync(order_id)
+        if not order:
+            api.answer_callback_query(cb["id"], "Order not found", show_alert=True)
+            return
+        oid, uid, prod, desc, qty, status, created = order
+        user = db.get_user_sync(uid)
+        uname = user[1] if user and user[1] else f"ID:{uid}"
+        text_msg = msg(lang, "order_detail", order_id=oid, username=uname, product=prod, desc=desc, qty=qty, status=status_name(status, lang), created=created)
+        api.edit_message_text(chat_id, message_id, text_msg, reply_markup=order_action_kb(order_id, lang))
+
+    elif data.startswith("setstatus_"):
+        if user_id != config.get("owner_id"):
+            api.answer_callback_query(cb["id"], msg(lang, "access_denied"), show_alert=True)
+            return
+        parts = data.split("_")
+        order_id = int(parts[1])
+        new_status = parts[2]
+        order = db.get_order_sync(order_id)
+        if not order:
+            api.answer_callback_query(cb["id"], "Order not found", show_alert=True)
+            return
+        db.update_order_status_sync(order_id, new_status)
+        api.answer_callback_query(cb["id"], msg(lang, "status_changed", order_id=order_id, status=status_name(new_status, lang)), show_alert=True)
+        client_id = order[1]
+        try:
+            api.send_message(client_id, msg(lang, "notify_status", order_id=order_id, status=status_name(new_status, lang)))
+        except Exception:
+            pass
+        order = db.get_order_sync(order_id)
+        oid, uid, prod, desc, qty, status, created = order
+        user = db.get_user_sync(uid)
+        uname = user[1] if user and user[1] else f"ID:{uid}"
+        text_msg = msg(lang, "order_detail", order_id=oid, username=uname, product=prod, desc=desc, qty=qty, status=status_name(status, lang), created=created)
+        api.edit_message_text(chat_id, message_id, text_msg, reply_markup=order_action_kb(order_id, lang))
 
     elif data == "settings":
         if user_id != config.get("owner_id"):
-            api.answer_callback_query(cb["id"], "Access denied", show_alert=True)
+            api.answer_callback_query(cb["id"], msg(lang, "access_denied"), show_alert=True)
             return
-        api.edit_message_text(chat_id, message_id, "<b>Bot Settings:</b>\n\nWelcome message and more.", reply_markup=back_kb())
+        api.edit_message_text(chat_id, message_id, msg(lang, "settings_text"), reply_markup=back_kb(lang))
 
 
 def main():

@@ -4,6 +4,7 @@ Telegram bot for small business: orders, notifications, analytics. Works from Ru
 
 ## Features
 
+**Free:**
 - Order management (customers place orders through bot)
 - Notification to owner about new orders
 - Basic analytics (users, orders, pending/completed)
@@ -11,6 +12,15 @@ Telegram bot for small business: orders, notifications, analytics. Works from Ru
 - SQLite database (no server needed)
 - Docker-ready
 - Works from Russia (Cloudflare proxy)
+
+**Pro (paid):**
+- Payment integration (ЮMoney, Киви, card transfers)
+- Multi-admin support (team management)
+- Auto-responses (AI-powered customer support)
+- CRM integration (1C, amoCRM, Bitrix24)
+- Advanced analytics (charts, export)
+- Custom branding (your logo, colors)
+- Priority support
 
 ## Quick Start
 
@@ -63,11 +73,26 @@ docker build -t my-bot .
 docker run my-bot
 ```
 
-## Support
+## Pro Features
 
-If this bot helped you, consider buying me a coffee:
+Need payment processing, multi-admin, or CRM integration? 
 
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/YOUR_USERNAME)
+**Get Pro version:** Contact @Sakvato on Telegram
+
+**Pricing:**
+- Pro license: $99 (one-time)
+- Setup + customization: $199
+- Monthly support: $49/month
+
+## Setup Service
+
+Don't want to set up yourself? I'll do it for you:
+
+- Basic setup: $49
+- Full customization: $149
+- Priority support: $99/month
+
+**Contact:** @Sakvato on Telegram
 
 ## License
 
